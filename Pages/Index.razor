@@ -1,0 +1,68 @@
+﻿@page "/"
+@inject CompileService service
+
+<PageTitle>Index</PageTitle>
+<MonacoEditor 
+    Id="csharp-editor" 
+    ConstructionOptions="CsharpEditorConstructionOptions"
+    OnDidChangeModelContent="OnCsharpChange"
+/>
+<MonacoEditor Id="xml-editor" ConstructionOptions="XmlEditorConstructionOptions"/>
+
+@code{
+    private MonacoEditor? csharpEditor;
+    private MonacoEditor? xmlEditor;
+    
+    private StandaloneEditorConstructionOptions CsharpEditorConstructionOptions(MonacoEditor editor)
+    {
+        csharpEditor = editor;
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "csharp",
+            Value = "var response = new MessagingResponse();\n" +
+                    "response.Message(\"Hello from C#!\");\n" +
+                    "return response;"
+        };
+    }
+    
+    private StandaloneEditorConstructionOptions XmlEditorConstructionOptions(MonacoEditor editor)
+    {
+        xmlEditor = editor;
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "xml",
+            ReadOnly = true,
+            Value = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                    "<Response>\n" +
+                    "  <Message>Hello from C#!</Message>\n" +
+                    "</Response>"
+        };
+    }
+
+    protected override async void OnInitialized() => await service.Init();
+
+    private  Task OnCsharpChange(ModelContentChangedEvent evt) => RunCsharp();
+
+    private async Task RunCsharp()
+    {
+        var csCode = await csharpEditor.GetValue();
+        csCode = "using System;" +
+                 "using Twilio.TwiML; " +
+                 "public class Program { " +
+                 "  public string GetString() => GetTwiML().ToString(); " +
+                 "  public TwiML GetTwiML(){" + csCode + "}" +
+                 "}";
+
+        var result = await service.CompileAndRun(csCode);
+        if (string.IsNullOrEmpty(result))
+        {
+            await xmlEditor.SetValue(string.Join("\r\n", service.CompileLog));
+        }
+        else
+        {
+            await xmlEditor.SetValue(result);
+        }
+    }
+}
