@@ -1,12 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Components;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -15,21 +9,18 @@ namespace TwiMLRepl
 {
     public class CompileService
     {
-        private readonly HttpClient _http;
-        private readonly NavigationManager _uriHelper;
-        public StringBuilder CompileLog { get; set; } = new StringBuilder();
-        private List<MetadataReference> references { get; set; }
+        private readonly HttpClient httpClient;
+        private List<MetadataReference> references = new();
+        public StringBuilder CompileLog { get; } = new();
 
-
-        public CompileService(HttpClient http, NavigationManager uriHelper)
+        public CompileService(HttpClient httpClient)
         {
-            _http = http;
-            _uriHelper = uriHelper;
+            this.httpClient = httpClient;
         }
 
         public async Task Init()
         {
-            if (references == null)
+            if (!references.Any())
             {
                 references = new List<MetadataReference>();
                 foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
@@ -43,7 +34,7 @@ namespace TwiMLRepl
                     Console.WriteLine(name);
                     references.Add(
                         MetadataReference.CreateFromStream(
-                            await this._http.GetStreamAsync($"/_framework/{name}")));
+                            await this.httpClient.GetStreamAsync($"/_framework/{name}")));
                 }
 
                 var extraAssemblies = new string[]
@@ -56,22 +47,23 @@ namespace TwiMLRepl
                 foreach (var assembly in extraAssemblies)
                     references.Add(
                         MetadataReference.CreateFromStream(
-                            await this._http.GetStreamAsync($"/_framework/{assembly}")));
+                            await this.httpClient.GetStreamAsync($"/_framework/{assembly}")));
             }
         }
-        
-        public async Task<Assembly> Compile(string code)
+
+        public async Task<Assembly?> Compile(string code)
         {
             CompileLog.Clear();
             await Init();
 
-            SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(code, new CSharpParseOptions(LanguageVersion.Preview));
-            foreach (var diagnostic in syntaxTree.GetDiagnostics())
+            var syntaxTree = CSharpSyntaxTree.ParseText(code, new CSharpParseOptions(LanguageVersion.Preview));
+            var diagnostics = syntaxTree.GetDiagnostics().ToList();
+            foreach (var diagnostic in diagnostics)
             {
                 CompileLog.AppendLine(diagnostic.ToString());
             }
 
-            if (syntaxTree.GetDiagnostics().Any(i => i.Severity == DiagnosticSeverity.Error))
+            if (diagnostics.Any(i => i.Severity == DiagnosticSeverity.Error))
             {
                 CompileLog.AppendLine("Parse SyntaxTree Error!");
                 return null;
@@ -79,44 +71,42 @@ namespace TwiMLRepl
 
             CompileLog.AppendLine("Parse SyntaxTree Success");
 
-            CSharpCompilation compilation = CSharpCompilation.Create("CompileBlazorInBlazor.Demo", new[] {syntaxTree},
+            var compilation = CSharpCompilation.Create("TwiMLRepl", new[] {syntaxTree},
                 references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-            using (MemoryStream stream = new MemoryStream())
+            await using var stream = new MemoryStream();
+            var result = compilation.Emit(stream);
+
+            foreach (var diagnostic in result.Diagnostics)
             {
-                EmitResult result = compilation.Emit(stream);
-
-                foreach (var diagnostic in result.Diagnostics)
-                {
-                    CompileLog.AppendLine(diagnostic.ToString());
-                }
-
-                if (!result.Success)
-                {
-                    CompileLog.AppendLine("Compilation error");
-                    return null;
-                }
-
-                CompileLog.AppendLine("Compilation success!");
-
-                stream.Seek(0, SeekOrigin.Begin);
-
-                Assembly assemby = AppDomain.CurrentDomain.Load(stream.ToArray());
-                return assemby;
+                CompileLog.AppendLine(diagnostic.ToString());
             }
+
+            if (!result.Success)
+            {
+                CompileLog.AppendLine("Compilation error");
+                return null;
+            }
+
+            CompileLog.AppendLine("Compilation success!");
+
+            stream.Seek(0, SeekOrigin.Begin);
+
+            var assembly = AppDomain.CurrentDomain.Load(stream.ToArray());
+            return assembly;
         }
-        
-        public async Task<string> CompileAndRun(string code)
+
+        public async Task<string?> CompileAndRun(string code)
         {
             await Init();
 
-            var assemby = await this.Compile(code);
-            if (assemby != null)
+            var assembly = await Compile(code);
+            if (assembly != null)
             {
-                var type = assemby.GetExportedTypes().Single(t => t.Name == "Program");
+                var type = assembly.GetExportedTypes().Single(t => t.Name == "Program");
                 var methodInfo = type.GetMethod("GetString");
                 var instance = Activator.CreateInstance(type);
-                return methodInfo.Invoke(instance, new object[] { })?.ToString();
+                return methodInfo.Invoke(instance, null)?.ToString();
             }
 
             return null;
