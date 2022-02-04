@@ -10,12 +10,14 @@ namespace TwiMLRepl
     public class CompileService
     {
         private readonly HttpClient httpClient;
+        private readonly ILogger<CompileService> logger;
         private List<MetadataReference> references = new();
         public StringBuilder CompileLog { get; } = new();
 
-        public CompileService(HttpClient httpClient)
+        public CompileService(HttpClient httpClient, ILogger<CompileService> logger)
         {
             this.httpClient = httpClient;
+            this.logger = logger;
         }
 
         public async Task Init()
@@ -76,9 +78,16 @@ namespace TwiMLRepl
                 };
 
                 foreach (var assembly in assemblies)
-                    references.Add(
-                        MetadataReference.CreateFromStream(
-                            await this.httpClient.GetStreamAsync($"/_framework/{assembly}")));
+                    try
+                    {
+                        references.Add(
+                            MetadataReference.CreateFromStream(
+                                await this.httpClient.GetStreamAsync($"/_framework/{assembly}")));
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to load assembly");
+                    }
             }
         }
 
