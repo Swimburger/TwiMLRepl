@@ -22,28 +22,60 @@ namespace TwiMLRepl
         {
             if (!references.Any())
             {
-                references = new List<MetadataReference>();
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                var assemblies = new[]
                 {
-                    if (assembly.IsDynamic)
-                    {
-                        continue;
-                    }
-
-                    var name = assembly.GetName().Name + ".dll";
-                    references.Add(
-                        MetadataReference.CreateFromStream(
-                            await this.httpClient.GetStreamAsync($"/_framework/{name}")));
-                }
-
-                var extraAssemblies = new string[]
-                {
+                    "System.Private.CoreLib.dll",
+                    "System.Private.Runtime.InteropServices.JavaScript.dll",
+                    "System.Runtime.dll",
+                    "System.Collections.dll",
+                    "Microsoft.AspNetCore.Components.WebAssembly.dll",
+                    "Microsoft.JSInterop.WebAssembly.dll",
+                    "Microsoft.JSInterop.dll",
+                    "System.Collections.Concurrent.dll",
+                    "System.Text.Json.dll",
+                    "Microsoft.AspNetCore.Components.dll",
+                    "System.Private.Uri.dll",
+                    "TwiMLRepl.dll",
+                    "System.ComponentModel.dll",
+                    "Microsoft.Extensions.Configuration.Abstractions.dll",
+                    "Microsoft.AspNetCore.Components.Web.dll",
+                    "Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+                    "Microsoft.Extensions.Logging.dll",
+                    "System.Net.Http.dll",
+                    "System.Text.Encodings.Web.dll",
+                    "System.Memory.dll",
+                    "System.Text.Encoding.Extensions.dll",
+                    "System.Threading.dll",
+                    "System.Numerics.Vectors.dll",
+                    "System.Runtime.Intrinsics.dll",
+                    "Microsoft.Extensions.Configuration.dll",
+                    "netstandard.dll",
+                    "Microsoft.Extensions.Primitives.dll",
+                    "Microsoft.Extensions.Logging.Abstractions.dll",
+                    "Microsoft.Extensions.Options.dll",
+                    "Microsoft.Extensions.Configuration.Json.dll",
+                    "BlazorMonaco.dll",
+                    "System.Net.Primitives.dll",
+                    "Microsoft.CodeAnalysis.dll",
+                    "Microsoft.Extensions.DependencyInjection.dll",
+                    "System.Diagnostics.Tracing.dll",
+                    "System.Runtime.Loader.dll",
+                    "System.dll",
+                    "System.Runtime.InteropServices.dll",
+                    "System.Reflection.Emit.Lightweight.dll",
+                    "System.Reflection.Emit.ILGeneration.dll",
+                    "System.Reflection.Primitives.dll",
+                    "System.Security.Cryptography.X509Certificates.dll",
+                    "System.Diagnostics.DiagnosticSource.dll",
+                    "System.Collections.Immutable.dll",
+                    "System.Linq.dll",
+                    "System.Console.dll",
                     "System.Private.Xml.Linq.dll",
                     "System.Xml.XDocument.dll",
                     "Twilio.dll"
                 };
 
-                foreach (var assembly in extraAssemblies)
+                foreach (var assembly in assemblies)
                     references.Add(
                         MetadataReference.CreateFromStream(
                             await this.httpClient.GetStreamAsync($"/_framework/{assembly}")));
