@@ -31,7 +31,6 @@ namespace TwiMLRepl
                     }
 
                     var name = assembly.GetName().Name + ".dll";
-                    Console.WriteLine(name);
                     references.Add(
                         MetadataReference.CreateFromStream(
                             await this.httpClient.GetStreamAsync($"/_framework/{name}")));
