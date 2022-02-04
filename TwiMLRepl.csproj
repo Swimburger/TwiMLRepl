@@ -16,5 +16,6 @@
 
   <ItemGroup>
     <_ContentIncludedByDefault Remove="Pages\Index.razor" />
+    <_ContentIncludedByDefault Remove="Shared\MainLayout.razor" />
   </ItemGroup>
 </Project>
