@@ -45,6 +45,7 @@ const requiredAssemblies = new Set([
 const assemblyGroups = [
   config.resources?.coreAssembly ?? [],
   config.resources?.assembly ?? [],
+  config.resources?.lazyAssembly ?? [],
 ];
 const assemblies = assemblyGroups
   .flat()

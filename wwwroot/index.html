@@ -1,217 +1,64 @@
 <!DOCTYPE html>
-<html lang="en" class="h-100">
+<html lang="en">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <title>TwiML C# REPL</title>
-    <meta name="description"
-          content="TwiML C# REPL lets you play around with the Twilio TwiML APIs right inside the browser. Quickly test the C# .NET TwiML APIs and see resulting TwiML immediately.">
+    <meta name="description" content="Compile C# Twilio TwiML locally in your browser and inspect valid Voice or Messaging TwiML without sending code to a server.">
     <meta property="og:title" content="TwiML C# .NET REPL">
-    <meta name="twitter:title" content="TwiML C# .NET REPL">
-    <meta property="og:description"
-          content="TwiML C# REPL lets you play around with the Twilio TwiML APIs right inside the browser. Quickly test the C# .NET TwiML APIs and see resulting TwiML immediately.">
-    <meta name="twitter:description"
-          content="TwiML C# REPL lets you play around with the Twilio TwiML APIs right inside the browser. Quickly test the C# .NET TwiML APIs and see resulting TwiML immediately.">
+    <meta property="og:description" content="Compile C# Twilio TwiML locally in your browser and inspect the generated XML.">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:site" content="@RealSwimburger">
-    <meta name="twitter:creator" content="@RealSwimburger">
-    <link rel="icon" type="image/png" href="https://swimburger.net/content/favicon/favicon-16x16.png" sizes="16x16">
-    <link rel="icon" type="image/png" href="https://swimburger.net/content/favicon/favicon-32x32.png" sizes="32x32">
-    <link rel="icon" type="image/png" href="https://swimburger.net/content/favicon/favicon-96x96.png" sizes="96x96">
-    <link rel="icon" type="image/png" href="https://swimburger.net/content/favicon/favicon-128.png" sizes="128x128">
-    <link rel="icon" type="image/png" href="https://swimburger.net/content/favicon/favicon-196x196.png" sizes="196x196">
-    <link rel="apple-touch-icon-precomposed" sizes="57x57"
-          href="https://swimburger.net/content/favicon/apple-touch-icon-57x57.png">
-    <link rel="apple-touch-icon-precomposed" sizes="60x60"
-          href="https://swimburger.net/content/favicon/apple-touch-icon-60x60.png">
-    <link rel="apple-touch-icon-precomposed" sizes="72x72"
-          href="https://swimburger.net/content/favicon/apple-touch-icon-72x72.png">
-    <link rel="apple-touch-icon-precomposed" sizes="76x76"
-          href="https://swimburger.net/content/favicon/apple-touch-icon-76x76.png">
-    <link rel="apple-touch-icon-precomposed" sizes="114x114"
-          href="https://swimburger.net/content/favicon/apple-touch-icon-114x114.png">
-    <link rel="apple-touch-icon-precomposed" sizes="120x120"
-          href="https://swimburger.net/content/favicon/apple-touch-icon-120x120.png">
-    <link rel="apple-touch-icon-precomposed" sizes="144x144"
-          href="https://swimburger.net/content/favicon/apple-touch-icon-144x144.png">
-    <link rel="apple-touch-icon-precomposed" sizes="152x152"
-          href="https://swimburger.net/content/favicon/apple-touch-icon-152x152.png">
-    <base href="/"/><!-- CSS only -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.9/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-yEPZ7jP9S0QKiUQ0m3jjsO4ProIW7wvR9gXkI7JOGa2XVsw53Yke2bsdkBbjmmiX" crossorigin="anonymous"
-          referrerpolicy="no-referrer">
-    <link href="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.css" rel="stylesheet"/>
-    <style>
-        #blazor-error-ui {
-            background: lightyellow;
-            bottom: 0;
-            box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-            display: none;
-            left: 0;
-            padding: 0.6rem 1.25rem 0.7rem 1.25rem;
-            position: fixed;
-            width: 100%;
-            z-index: 1000;
-        }
-
-        #blazor-error-ui .dismiss {
-            cursor: pointer;
-            position: absolute;
-            right: 0.75rem;
-            top: 0.5rem;
-        }
-
-        .blazor-error-boundary {
-            background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
-            padding: 1rem 1rem 1rem 3.7rem;
-            color: white;
-        }
-
-        .blazor-error-boundary::after {
-            content: "An error has occurred."
-        }
-
-        .clearfix::after {
-            display: block;
-            content: "";
-            clear: both;
-        }
-
-        .center-text {
-            text-align: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 960px;
-            margin: 0 auto;
-        }
-
-        .row {
-            width: 100%;
-        }
-
-        .column {
-            width: 50%;
-            float: left;
-        }
-
-        .monaco-editor-container {
-            height: 1000px;
-            max-height: 50vh;
-        }
-
-        .container h1 {
-            font-weight: 400;
-            font-size: 3em;
-            margin-bottom: 0;
-            margin-top: 20px;
-        }
-
-        .container p {
-            line-height: 1.7;
-            font-size: 18px;
-            margin-top: 2px;
-        }
-
-        .github-corner:hover .octo-arm {
-            animation: octocat-wave 560ms ease-in-out
-        }
-
-        @keyframes octocat-wave {
-
-            0%,
-            100% {
-                transform: rotate(0)
-            }
-
-            20%,
-            60% {
-                transform: rotate(-25deg)
-            }
-
-            40%,
-            80% {
-                transform: rotate(10deg)
-            }
-        }
-
-        @media (max-width: 500px) {
-            .github-corner:hover .octo-arm {
-                animation: none
-            }
-
-            .github-corner .octo-arm {
-                animation: octocat-wave 560ms ease-in-out
-            }
-        }
-
-        footer {
-            background-color: #eee;
-        }
-
-        footer a {
-            text-decoration: underline;
-        }
-
-        footer img {
-            float: left;
-            margin-right: 5px;
-        }
-
-        .output-text-wrapper {
-            position: relative;
-        }
-
-        .output-text-wrapper button {
-            position: absolute;
-            top: 5px;
-            right: 20px;
-            padding: .5em .75em .625em .7em;
-            line-height: 1;
-        }
-    </style>
+    <meta name="twitter:title" content="TwiML C# .NET REPL">
+    <meta name="twitter:description" content="Compile C# Twilio TwiML locally in your browser and inspect the generated XML.">
+    <link rel="canonical" href="https://twiml.swimburger.net/">
+    <base href="/">
+    <link rel="icon" href="https://swimburger.net/content/favicon/favicon-32x32.png" sizes="32x32">
+    <link href="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.css" rel="stylesheet">
+    <link href="app.css" rel="stylesheet">
 </head>
-<body class="d-flex flex-column h-100">
-<a href="https://github.com/Swimburger/TwiMLRepl" class="github-corner" aria-label="View source on GitHub">
-    <svg width="80" height="80" viewBox="0 0 250 250"
-         style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true">
-        <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
-        <path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
-              fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path>
-        <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
-              fill="currentColor" class="octo-body"></path>
-    </svg>
-</a>
-<div class="container text-center">
-    <h1 class="display-4">TwiML C# REPL</h1>
-    <p>
-        TwiML C# REPL let's you play around with the Twilio TwiML APIs right inside the browser.<br>
-        Quickly test the C# .NET TwiML APIs and see the resulting TwiML immediately.<br>
-        Modify the C# code on the left and the TwiML will output on the right.<br>
-        Learn more about <a href="https://www.twilio.com/docs/voice/twiml">TwiML™ for Programmable Voice</a> and
-        <a href="https://www.twilio.com/docs/messaging/twiml">TwiML™ for Programmable SMS</a> at the Twilio Docs.<br><br>
-        The C# code is compiled locally in a Blazor WebAssembly application and executed in your browser.
-    </p>
-</div>
-<div id="app">Loading...</div>
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
-<footer class="footer mt-auto py-3">
-    <div class="container">
-        <img src="https://swimburger.net/content/img/burger.svg" width="40" height="22" alt="Swimburger logo">
-        Tool provided by Niels Swimberghe; Follow Niels' blog at
-        <a href="https://swimburger.net">swimburger.net</a> or on <a
-            href="https://twitter.com/RealSwimburger">Twitter</a>;
-        <a href="https://privacypolicies.com/privacy/view/95b2095f4609044d9618c21b06f5df75">Privacy Policy</a>
+<body>
+    <header class="site-header">
+        <div class="title-row">
+            <h1 id="repl-heading"><span>TwiML</span> C# REPL</h1>
+            <span class="twilio-badge-clearspace">
+                <img class="twilio-badge" src="assets/powered-by-twilio-red.png" width="105" height="28" alt="Powered by Twilio">
+            </span>
+        </div>
+        <p>Write C# and generate TwiML locally in your browser. Your code runs in a terminable worker and is not sent to a server.</p>
+        <details class="learn">
+            <summary>Documentation and source</summary>
+            <nav aria-label="TwiML REPL resources">
+                <a href="https://www.twilio.com/docs/voice/twiml">Voice TwiML</a>
+                <a href="https://www.twilio.com/docs/messaging/twiml">Messaging TwiML</a>
+                <a href="https://github.com/Swimburger/TwiMLRepl">Source code</a>
+            </nav>
+        </details>
+    </header>
+    <div id="app">
+        <div class="initial-loading" role="status">
+            <progress aria-label="Loading the editor"></progress>
+            <p>Loading the editor interface…</p>
+        </div>
     </div>
-</footer>
-<script src="_content/BlazorMonaco/jsInterop.js"></script>
-<script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
-<script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
-<script src="_framework/blazor.webassembly.js"></script>
+    <div id="blazor-error-ui" role="alert">
+        The application encountered an unexpected error.
+        <a href="" class="reload">Reload</a>
+        <button type="button" class="dismiss" aria-label="Dismiss error message">×</button>
+    </div>
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-owner">
+                <img src="https://swimburger.net/content/img/burger.svg" width="32" height="18" alt="Swimburger logo">
+                <span>Tool by Niels Swimberghe — <a href="https://swimburger.net">swimburger.net</a> · <a href="https://x.com/RealSwimburger">X</a> · <a href="https://swimburger.net/privacy">Privacy Policy</a></span>
+            </div>
+            <small>This independent tool is not affiliated with or endorsed by Twilio Inc. Twilio, TwiML, and all related logos are trademarks of Twilio Inc. or its affiliates.</small>
+        </div>
+    </footer>
+    <script src="_content/BlazorMonaco/jsInterop.js"></script>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
+    <script src="app.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>

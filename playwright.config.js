@@ -9,7 +9,7 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:8787",
   },
   webServer: {
-    command: "cf dev -- --port 8787",
+    command: "./node_modules/.bin/cf dev -- --port 8787",
     url: "http://127.0.0.1:8787",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -3,20 +3,34 @@
     <TargetFramework>net11.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <BlazorEnableTimeZoneSupport>false</BlazorEnableTimeZoneSupport>
     <!-- Roslyn consumes the published assemblies as metadata references in-browser. -->
     <WasmEnableWebcil>false</WasmEnableWebcil>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Compiler/**/*.cs" />
     <PackageReference Include="BlazorMonaco" Version="3.5.0" />
-    <PackageReference Include="Microsoft.Bcl.Cryptography" Version="11.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="11.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="11.0.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.12.0" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.12.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
-    <PackageReference Include="Twilio" Version="8.2.0" />
+    <ProjectReference Include="Compiler/TwiMLRepl.Compiler.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The UI shell does not need the compiler/tooling graph. The isolated worker loads these on first Run. -->
+    <BlazorWebAssemblyLazyLoad Include="Microsoft.CodeAnalysis.dll" />
+    <BlazorWebAssemblyLazyLoad Include="Microsoft.CodeAnalysis.CSharp.dll" />
+    <BlazorWebAssemblyLazyLoad Include="Microsoft.IdentityModel.Abstractions.dll" />
+    <BlazorWebAssemblyLazyLoad Include="Microsoft.IdentityModel.JsonWebTokens.dll" />
+    <BlazorWebAssemblyLazyLoad Include="Microsoft.IdentityModel.Logging.dll" />
+    <BlazorWebAssemblyLazyLoad Include="Microsoft.IdentityModel.Tokens.dll" />
+    <BlazorWebAssemblyLazyLoad Include="Newtonsoft.Json.dll" />
+    <BlazorWebAssemblyLazyLoad Include="System.IdentityModel.Tokens.Jwt.dll" />
+    <BlazorWebAssemblyLazyLoad Include="Twilio.dll" />
+    <BlazorWebAssemblyLazyLoad Include="Microsoft.CSharp.dll" />
+    <BlazorWebAssemblyLazyLoad Include="System.Text.Encoding.CodePages.dll" />
+    <BlazorWebAssemblyLazyLoad Include="TwiMLRepl.Compiler.dll" />
   </ItemGroup>
 </Project>
