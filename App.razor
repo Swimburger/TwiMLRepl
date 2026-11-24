@@ -1,21 +1,22 @@
 ﻿@inject CompileService compileService
 <div class="row clearfix">
     <div class="column">
-        <MonacoEditor
+        <StandaloneCodeEditor
             Id="csharp-editor"
             ConstructionOptions="CsharpEditorConstructionOptions"
             OnDidChangeModelContent="OnCsharpChange"/>
     </div>
     <div class="column">
-        <MonacoEditor Id="xml-editor" ConstructionOptions="XmlEditorConstructionOptions"/>
+        <StandaloneCodeEditor Id="xml-editor" ConstructionOptions="XmlEditorConstructionOptions"/>
     </div>
 </div>
 
 @code{
-    private MonacoEditor? csharpEditor;
-    private MonacoEditor? xmlEditor;
+    private StandaloneCodeEditor? csharpEditor;
+    private StandaloneCodeEditor? xmlEditor;
+    private CancellationTokenSource? compileCancellation;
 
-    private StandaloneEditorConstructionOptions CsharpEditorConstructionOptions(MonacoEditor editor)
+    private StandaloneEditorConstructionOptions CsharpEditorConstructionOptions(StandaloneCodeEditor editor)
     {
         csharpEditor = editor;
         var options = new StandaloneEditorConstructionOptions
@@ -30,11 +31,10 @@
                     "response.Message(\"Hello from C#!\");\n" +
                     "return response;"
         };
-        compileService.CompileAndRun(options.Value);
         return options;
     }
 
-    private StandaloneEditorConstructionOptions XmlEditorConstructionOptions(MonacoEditor editor)
+    private StandaloneEditorConstructionOptions XmlEditorConstructionOptions(StandaloneCodeEditor editor)
     {
         xmlEditor = editor;
         return new StandaloneEditorConstructionOptions
@@ -53,10 +53,31 @@
         };
     }
 
-    private Task OnCsharpChange(ModelContentChangedEvent evt) => RunCsharp();
+    private async Task OnCsharpChange(ModelContentChangedEvent evt)
+    {
+        compileCancellation?.Cancel();
+        compileCancellation?.Dispose();
+        compileCancellation = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(300, compileCancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        await RunCsharp();
+    }
 
     private async Task RunCsharp()
     {
+        if (csharpEditor is null || xmlEditor is null)
+        {
+            return;
+        }
+
         var csCode = await csharpEditor.GetValue();
         csCode = "using System;" +
                  "using Twilio.TwiML; " +

@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Text;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -11,7 +10,8 @@ namespace TwiMLRepl
     {
         private readonly HttpClient httpClient;
         private readonly ILogger<CompileService> logger;
-        private List<MetadataReference> references = new();
+        private readonly List<MetadataReference> references = new();
+        private Task? initializationTask;
         public StringBuilder CompileLog { get; } = new();
 
         public CompileService(HttpClient httpClient, ILogger<CompileService> logger)
@@ -20,74 +20,17 @@ namespace TwiMLRepl
             this.logger = logger;
         }
 
-        public async Task Init()
-        {
-            if (!references.Any())
-            {
-                var assemblies = new[]
-                {
-                    "System.Private.CoreLib.dll",
-                    "System.Private.Runtime.InteropServices.JavaScript.dll",
-                    "System.Runtime.dll",
-                    "System.Collections.dll",
-                    "Microsoft.AspNetCore.Components.WebAssembly.dll",
-                    "Microsoft.JSInterop.WebAssembly.dll",
-                    "Microsoft.JSInterop.dll",
-                    "System.Collections.Concurrent.dll",
-                    "System.Text.Json.dll",
-                    "Microsoft.AspNetCore.Components.dll",
-                    "System.Private.Uri.dll",
-                    "TwiMLRepl.dll",
-                    "System.ComponentModel.dll",
-                    "Microsoft.Extensions.Configuration.Abstractions.dll",
-                    "Microsoft.AspNetCore.Components.Web.dll",
-                    "Microsoft.Extensions.DependencyInjection.Abstractions.dll",
-                    "Microsoft.Extensions.Logging.dll",
-                    "System.Net.Http.dll",
-                    "System.Text.Encodings.Web.dll",
-                    "System.Memory.dll",
-                    "System.Text.Encoding.Extensions.dll",
-                    "System.Threading.dll",
-                    "System.Numerics.Vectors.dll",
-                    "System.Runtime.Intrinsics.dll",
-                    "Microsoft.Extensions.Configuration.dll",
-                    "netstandard.dll",
-                    "Microsoft.Extensions.Primitives.dll",
-                    "Microsoft.Extensions.Logging.Abstractions.dll",
-                    "Microsoft.Extensions.Options.dll",
-                    "Microsoft.Extensions.Configuration.Json.dll",
-                    "BlazorMonaco.dll",
-                    "System.Net.Primitives.dll",
-                    "Microsoft.CodeAnalysis.dll",
-                    "Microsoft.Extensions.DependencyInjection.dll",
-                    "System.Diagnostics.Tracing.dll",
-                    "System.Runtime.Loader.dll",
-                    "System.dll",
-                    "System.Runtime.InteropServices.dll",
-                    "System.Reflection.Emit.Lightweight.dll",
-                    "System.Reflection.Emit.ILGeneration.dll",
-                    "System.Reflection.Primitives.dll",
-                    "System.Security.Cryptography.X509Certificates.dll",
-                    "System.Diagnostics.DiagnosticSource.dll",
-                    "System.Collections.Immutable.dll",
-                    "System.Linq.dll",
-                    "System.Console.dll",
-                    "System.Private.Xml.Linq.dll",
-                    "System.Xml.XDocument.dll",
-                    "Twilio.dll"
-                };
+        public Task Init() => initializationTask ??= LoadReferences();
 
-                foreach (var assembly in assemblies)
-                    try
-                    {
-                        references.Add(
-                            MetadataReference.CreateFromStream(
-                                await this.httpClient.GetStreamAsync($"/_framework/{assembly}")));
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(ex, "Failed to load assembly");
-                    }
+        private async Task LoadReferences()
+        {
+            var assemblies = await httpClient.GetFromJsonAsync<string[]>("assembly-references.json")
+                ?? throw new InvalidOperationException("The assembly reference manifest is missing.");
+
+            foreach (var assembly in assemblies)
+            {
+                var image = await httpClient.GetByteArrayAsync($"_framework/{assembly}");
+                references.Add(MetadataReference.CreateFromImage(image));
             }
         }
 
@@ -143,9 +86,21 @@ namespace TwiMLRepl
             var assembly = await Compile(code);
             if (assembly != null)
             {
-                var type = assembly.GetExportedTypes().Single(t => t.Name == "Program");
+                var type = assembly.GetExportedTypes().SingleOrDefault(t => t.Name == "Program");
+                if (type is null)
+                {
+                    CompileLog.AppendLine("Compiled code does not export a Program type.");
+                    return null;
+                }
+
                 var methodInfo = type.GetMethod("GetString");
                 var instance = Activator.CreateInstance(type);
+                if (methodInfo is null || instance is null)
+                {
+                    CompileLog.AppendLine("Compiled Program does not expose GetString().");
+                    return null;
+                }
+
                 return methodInfo.Invoke(instance, null)?.ToString();
             }
 

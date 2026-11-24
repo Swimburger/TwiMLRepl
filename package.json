@@ -1,0 +1,21 @@
+{
+  "name": "twiml-repl",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=26"
+  },
+  "packageManager": "pnpm@12.23.0",
+  "scripts": {
+    "build": "dotnet publish TwiMLRepl.csproj --configuration Release --output dist --disable-build-servers -p:UseSharedCompilation=false && node scripts/write-reference-manifest.mjs",
+    "build:cloudflare": "pnpm run build && cf build",
+    "build:cloudflare:prebuilt": "cf build",
+    "deploy": "pnpm run build:cloudflare && cf deploy --prebuilt",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "cf": "1.0.0-rc.4",
+    "wrangler": "4.167.0"
+  }
+}
