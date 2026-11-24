@@ -33,12 +33,14 @@ test("serves the SPA with Cloudflare headers and immutable framework assets", as
   expect(root.headers()["cache-control"]).toContain("must-revalidate");
   expect(root.headers()["x-content-type-options"]).toBe("nosniff");
   expect(root.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+  const rootHtml = await root.text();
+  expect(rootHtml).not.toMatch(/google-analytics|googletagmanager|gtag\(/i);
 
   const deepLink = await request.get("/deep/link", {
     headers: { Accept: "text/html" },
   });
   expect(deepLink.status()).toBe(200);
-  expect(await deepLink.text()).toBe(await root.text());
+  expect(await deepLink.text()).toBe(rootHtml);
 
   await page.goto("/");
   await expect(page.locator("#csharp-editor .monaco-editor")).toBeVisible({ timeout: 60_000 });
