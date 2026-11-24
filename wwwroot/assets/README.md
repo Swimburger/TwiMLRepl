@@ -11,3 +11,7 @@
 Twilio's guidelines permit customers and developers to use this badge for websites and apps built using or integrating with Twilio, subject to the current guidelines and account standing. Keep the badge unmodified, within the prescribed 105×28 to 195×52 CSS-pixel range, with clearspace equal to half its displayed height. Remove it if the integration ceases to use Twilio or Twilio requests removal.
 
 Twilio, TwiML, and all related logos are trademarks of Twilio Inc. or its affiliates. This independent tool is not affiliated with or endorsed by Twilio Inc.
+
+## Tool brand assets
+
+`favicon.svg` and `social-card.svg` are original artwork for this independent tool. Their PNG counterparts are rasterized from those SVG sources. The red palette references the interface theme, but the custom code mark is intentionally distinct from Twilio's logo.

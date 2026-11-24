@@ -22,6 +22,12 @@ test("runs C# in the isolated worker and exposes useful output actions", async (
   await waitForEditors(page);
   await expect(page.locator(".twilio-badge")).toHaveAttribute("src", "assets/powered-by-twilio-red.png");
   await expect(page.locator(".twilio-badge")).toHaveAttribute("alt", "Powered by Twilio");
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", "https://twiml.swimburger.net/assets/social-card.png");
+  await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute("content", "1200");
+  await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute("content", "630");
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute("content", "summary_large_image");
+  await expect(page.locator('link[rel="icon"][sizes="32x32"]')).toHaveAttribute("href", "assets/favicon-32x32.png");
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", "assets/apple-touch-icon.png");
   expect(requests.some((url) => /library\.twilio\.com|d3cy9zhslanhfa\.cloudfront\.net/.test(url))).toBe(false);
   await expect(page.getByRole("region", { name: "TwiML code workspace" })).toBeVisible();
   expect(await page.locator("#csharp-editor .monaco-editor").evaluate((editor) => getComputedStyle(editor).backgroundColor)).toBe("rgb(30, 30, 30)");
@@ -136,6 +142,18 @@ test("serves Brotli framework sidecars with correct headers and preserves SPA he
   expect(root.headers()["x-content-type-options"]).toBe("nosniff");
   expect(root.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   expect(await root.text()).not.toMatch(/google-analytics|googletagmanager|gtag\(/i);
+  for (const asset of [
+    "/assets/social-card.png",
+    "/assets/favicon.svg",
+    "/assets/favicon-16x16.png",
+    "/assets/favicon-32x32.png",
+    "/assets/favicon-96x96.png",
+    "/assets/apple-touch-icon.png",
+  ]) {
+    const assetResponse = await request.get(asset);
+    expect(assetResponse.status(), asset).toBe(200);
+    expect(assetResponse.headers()["cache-control"], asset).toContain("max-age=86400");
+  }
   const deepLink = await request.get("/deep/link", { headers: { Accept: "text/html" } });
   expect(deepLink.status()).toBe(200);
   await waitForEditors(page);
