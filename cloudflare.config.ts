@@ -11,7 +11,7 @@ export default defineConfig({
     domains: ["twiml.swimburger.net"],
     assets: {
       notFoundHandling: "single-page-application",
-      runWorkerFirst: ["/_framework/*"],
+      runWorkerFirst: ["/_framework/*", "/assets/monaco/*"],
     },
     observability: {
       enabled: true,

@@ -61,13 +61,6 @@ globalThis.twimlCompiler = {
 };
 
 globalThis.twimlUi = {
-    watchTheme() {
-        const forcedColors = matchMedia("(forced-colors: active)");
-        const apply = () => globalThis.monaco?.editor.setTheme(forcedColors.matches ? "hc-black" : "vs-dark");
-        apply();
-        requestAnimationFrame(() => requestAnimationFrame(apply));
-        forcedColors.addEventListener("change", apply);
-    },
     initToolbar() {
         const toolbar = document.querySelector('[role="toolbar"]');
         if (!toolbar || "focusgroup" in HTMLElement.prototype) return;

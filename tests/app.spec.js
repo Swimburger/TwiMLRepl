@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile, readdir } from "node:fs/promises";
 
 async function waitForEditors(page) {
   await page.goto("/");
@@ -7,10 +8,9 @@ async function waitForEditors(page) {
 }
 
 async function setSource(page, source) {
-  await page.evaluate((value) => {
-    const model = globalThis.monaco.editor.getModels().find((candidate) => candidate.getLanguageId() === "csharp");
-    if (!model) throw new Error("C# model not found");
-    model.setValue(value);
+  await page.evaluate(async (value) => {
+    const editor = await import("/assets/monaco/integration.js");
+    editor.setSource(value);
   }, source);
 }
 
@@ -28,6 +28,9 @@ test("runs C# in the isolated worker and exposes useful output actions", async (
   expect(await page.locator(".site-footer").evaluate((footer) => getComputedStyle(footer).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
   await expect(page.getByRole("textbox", { name: "C# TwiML source editor" })).toHaveCount(1);
   await expect(page.getByRole("textbox", { name: "Generated TwiML XML output" })).toHaveCount(1);
+  await expect(page.getByRole("textbox", { name: "Generated TwiML XML output" })).toHaveAttribute("aria-readonly", "true");
+  expect(await page.evaluate(() => "monaco" in globalThis)).toBe(false);
+  expect(requests.some((url) => /BlazorMonaco|\/vs\/loader\.js|editor\.main\.js/.test(url))).toBe(false);
   expect(requests.some((url) => /Microsoft\.CodeAnalysis|Twilio\./.test(url))).toBe(false);
   await setSource(page, 'var response = new MessagingResponse();\nresponse.Message("Compiled by Playwright");\nreturn response;');
   await expect(page.getByRole("status")).toContainText("stale");
@@ -43,6 +46,20 @@ test("runs C# in the isolated worker and exposes useful output actions", async (
   expect((await download).suggestedFilename()).toBe("twiml.xml");
   await expect(page.locator('.run-state[data-state="success"]')).toContainText("downloaded");
   expect(errors).toEqual([]);
+});
+
+test("ships only the narrow ESM Monaco integration", async () => {
+  const files = (await readdir("dist/wwwroot/assets/monaco")).filter((file) => !/\.(?:br|gz)$/.test(file)).sort();
+  expect(files).toHaveLength(4);
+  expect(files).toEqual(expect.arrayContaining([
+    "integration.js",
+    expect.stringMatching(/^editor-integration-[A-Z0-9]+\.css$/),
+    expect.stringMatching(/^editor-integration-[A-Z0-9]+\.js$/),
+    expect.stringMatching(/^editor-worker-[A-Z0-9]+\.js$/),
+  ]));
+  const index = await readFile("dist/wwwroot/index.html", "utf8");
+  expect(index).not.toMatch(/BlazorMonaco|\/vs\/loader\.js|editor\.main\.js/);
+  await expect(readdir("dist/wwwroot/_content/BlazorMonaco")).rejects.toThrow();
 });
 
 test("clears stale output and reports compile and unwrapped runtime errors", async ({ page }) => {
@@ -131,6 +148,15 @@ test("serves Brotli framework sidecars with correct headers and preserves SPA he
   expect(compressed.headers().vary).toContain("Accept-Encoding");
   expect(compressed.headers()["cache-control"]).toContain("immutable");
   expect(compressed.headers()["content-type"]).toMatch(/application\/(wasm|octet-stream)/);
+
+  const monacoUrl = await page.evaluate(() => performance.getEntriesByType("resource").map((entry) => entry.name)
+    .find((url) => /\/assets\/monaco\/editor-integration-.*\.js$/.test(url)));
+  expect(monacoUrl).toBeTruthy();
+  const compressedMonaco = await request.get(monacoUrl, { headers: { "Accept-Encoding": "br" } });
+  expect(compressedMonaco.status()).toBe(200);
+  expect(compressedMonaco.headers()["content-encoding"]).toBe("br");
+  expect(compressedMonaco.headers().vary).toContain("Accept-Encoding");
+  expect(compressedMonaco.headers()["content-type"]).toContain("text/javascript");
 });
 
 test("keeps the workspace legible and operable in forced colors", async ({ page }) => {

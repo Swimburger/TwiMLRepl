@@ -42,13 +42,11 @@
         <div class="editor-grid">
             <section class="editor-panel" aria-labelledby="csharp-heading">
                 <h2 id="csharp-heading">C# input</h2>
-                <StandaloneCodeEditor Id="csharp-editor"
-                                      ConstructionOptions="CsharpEditorConstructionOptions"
-                                      OnDidChangeModelContent="OnCsharpChange" />
+                <div id="csharp-editor" class="monaco-editor-container" @ref="csharpEditorElement"></div>
             </section>
             <section class="editor-panel" aria-labelledby="xml-heading">
                 <h2 id="xml-heading">TwiML output</h2>
-                <StandaloneCodeEditor Id="xml-editor" ConstructionOptions="XmlEditorConstructionOptions" />
+                <div id="xml-editor" class="monaco-editor-container" @ref="xmlEditorElement"></div>
             </section>
         </div>
     </section>
@@ -58,38 +56,17 @@
     private const int TimeoutMilliseconds = 10_000;
     private const string SmsCode = "var response = new MessagingResponse();\nresponse.Message(\"Hello from C#!\");\nreturn response;";
     private const string VoiceCode = "var response = new VoiceResponse();\nresponse.Say(\"Hello from C sharp!\");\nreturn response;";
-    private StandaloneCodeEditor? csharpEditor;
-    private StandaloneCodeEditor? xmlEditor;
+    private ElementReference csharpEditorElement;
+    private ElementReference xmlEditorElement;
+    private IJSObjectReference? editorModule;
+    private DotNetObjectReference<App>? selfReference;
     private string selectedExample = "sms";
     private string status = "ready";
     private string statusMessage = "Ready. Choose an example or edit the C# code, then select Run.";
     private bool isRunning;
     private bool xmlValid;
     private bool outputStale;
-    private bool suppressChange;
     private bool sourceChangedDuringRun;
-
-    private StandaloneEditorConstructionOptions CsharpEditorConstructionOptions(StandaloneCodeEditor editor)
-    {
-        csharpEditor = editor;
-        return EditorOptions("csharp", "C# TwiML source editor", SmsCode, false);
-    }
-
-    private StandaloneEditorConstructionOptions XmlEditorConstructionOptions(StandaloneCodeEditor editor)
-    {
-        xmlEditor = editor;
-        return EditorOptions("xml", "Generated TwiML XML output", string.Empty, true);
-    }
-
-    private static StandaloneEditorConstructionOptions EditorOptions(string language, string label, string value, bool readOnly) => new()
-    {
-        AutomaticLayout = true,
-        Language = language,
-        AriaLabel = label,
-        ReadOnly = readOnly,
-        Minimap = new EditorMinimapOptions { Enabled = false },
-        Value = value
-    };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -97,16 +74,23 @@
         {
             try
             {
-                await JS.InvokeVoidAsync("twimlUi.watchTheme");
+                editorModule = await JS.InvokeAsync<IJSObjectReference>("import", "./assets/monaco/integration.js");
+                selfReference = DotNetObjectReference.Create(this);
+                await editorModule.InvokeVoidAsync("createEditors", csharpEditorElement, xmlEditorElement, SmsCode, selfReference);
                 await JS.InvokeVoidAsync("twimlUi.initToolbar");
             }
-            catch (JSException) { }
+            catch (JSException exception)
+            {
+                status = "runtime-error";
+                statusMessage = $"The code editor could not be initialized: {exception.Message}";
+                StateHasChanged();
+            }
         }
     }
 
-    private Task OnCsharpChange(ModelContentChangedEvent _)
+    [JSInvokable]
+    public Task OnSourceChanged()
     {
-        if (suppressChange) return Task.CompletedTask;
         if (isRunning)
         {
             sourceChangedDuringRun = true;
@@ -116,22 +100,23 @@
         xmlValid = false;
         status = "stale";
         statusMessage = "Source changed. The output is stale; select Run to refresh it.";
-        return Task.CompletedTask;
+        return InvokeAsync(StateHasChanged);
     }
 
     private async Task Run()
     {
-        if (csharpEditor is null || xmlEditor is null || isRunning) return;
+        if (editorModule is null || isRunning) return;
         isRunning = true;
         sourceChangedDuringRun = false;
         xmlValid = false;
         outputStale = false;
         status = "running";
         statusMessage = "Loading the isolated compiler and reference assemblies, then running your code…";
-        await xmlEditor.SetValue(string.Empty);
+        if (!await TryInvokeEditorVoidAsync("setOutput", string.Empty)) return;
         StateHasChanged();
 
-        var code = await csharpEditor.GetValue();
+        var code = await TryGetEditorText("getSource");
+        if (code is null) return;
         WorkerResult result;
         try
         {
@@ -144,7 +129,7 @@
         isRunning = false;
         if (sourceChangedDuringRun)
         {
-            await xmlEditor.SetValue(string.Empty);
+            await TryInvokeEditorVoidAsync("setOutput", string.Empty);
             outputStale = true;
             xmlValid = false;
             status = "stale";
@@ -154,7 +139,7 @@
         status = result.Status;
         xmlValid = result.XmlValid;
         statusMessage = result.Message;
-        await xmlEditor.SetValue(result.Output ?? string.Empty);
+        await TryInvokeEditorVoidAsync("setOutput", result.Output ?? string.Empty);
     }
 
     private async Task Stop()
@@ -178,7 +163,7 @@
     private async Task Reset()
     {
         await SetSource(selectedExample == "voice" ? VoiceCode : SmsCode);
-        if (xmlEditor is not null) await xmlEditor.SetValue(string.Empty);
+        if (editorModule is not null) await TryInvokeEditorVoidAsync("setOutput", string.Empty);
         xmlValid = false;
         outputStale = false;
         status = "ready";
@@ -187,10 +172,8 @@
 
     private async Task SetSource(string value)
     {
-        if (csharpEditor is null) return;
-        suppressChange = true;
-        await csharpEditor.SetValue(value);
-        suppressChange = false;
+        if (editorModule is null) return;
+        if (!await TryInvokeEditorVoidAsync("setSource", value, false)) return;
         outputStale = true;
         xmlValid = false;
         status = "stale";
@@ -199,10 +182,11 @@
 
     private async Task FormatXml()
     {
-        if (xmlEditor is null) return;
+        if (editorModule is null) return;
         try
         {
-            await xmlEditor.SetValue(XDocument.Parse(await xmlEditor.GetValue()).ToString());
+            var output = await editorModule.InvokeAsync<string>("getOutput");
+            await editorModule.InvokeVoidAsync("setOutput", XDocument.Parse(output).ToString());
             status = "success";
             statusMessage = "TwiML formatted. XML is valid.";
         }
@@ -216,9 +200,9 @@
 
     private async Task CopyXml()
     {
-        if (xmlEditor is null) return;
+        if (editorModule is null) return;
         bool copied;
-        try { copied = await JS.InvokeAsync<bool>("twimlUi.copyText", await xmlEditor.GetValue()); }
+        try { copied = await JS.InvokeAsync<bool>("twimlUi.copyText", await editorModule.InvokeAsync<string>("getOutput")); }
         catch (JSException) { copied = false; }
         status = copied ? "success" : "runtime-error";
         statusMessage = copied ? "TwiML copied to the clipboard." : "Copy failed. Clipboard permission may be blocked.";
@@ -226,10 +210,10 @@
 
     private async Task DownloadXml()
     {
-        if (xmlEditor is null) return;
+        if (editorModule is null) return;
         try
         {
-            await JS.InvokeVoidAsync("twimlUi.downloadText", "twiml.xml", await xmlEditor.GetValue());
+            await JS.InvokeVoidAsync("twimlUi.downloadText", "twiml.xml", await editorModule.InvokeAsync<string>("getOutput"));
             status = "success";
             statusMessage = "TwiML downloaded as twiml.xml.";
         }
@@ -240,10 +224,53 @@
         }
     }
 
+    private async ValueTask<bool> TryInvokeEditorVoidAsync(string identifier, params object?[] args)
+    {
+        if (editorModule is null) return false;
+        try
+        {
+            await editorModule.InvokeVoidAsync(identifier, args);
+            return true;
+        }
+        catch (JSException exception)
+        {
+            isRunning = false;
+            status = "runtime-error";
+            statusMessage = $"The code editor failed: {exception.Message}";
+            return false;
+        }
+    }
+
+    private async ValueTask<string?> TryGetEditorText(string identifier)
+    {
+        if (editorModule is null) return null;
+        try
+        {
+            return await editorModule.InvokeAsync<string>(identifier);
+        }
+        catch (JSException exception)
+        {
+            isRunning = false;
+            status = "runtime-error";
+            statusMessage = $"The code editor failed: {exception.Message}";
+            return null;
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         try { await JS.InvokeVoidAsync("twimlCompiler.dispose"); }
         catch (JSDisconnectedException) { }
+        if (editorModule is not null)
+        {
+            try
+            {
+                await editorModule.InvokeVoidAsync("disposeEditors");
+                await editorModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+        selfReference?.Dispose();
     }
 
     private sealed class WorkerResult

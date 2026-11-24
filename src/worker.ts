@@ -1,9 +1,11 @@
-const compressibleFrameworkAsset = /\.(?:dll|wasm|js|json|dat)$/i;
+const compressibleAsset = /\.(?:css|dat|dll|js|json|ttf|wasm)$/i;
 
 function contentType(pathname: string): string {
   if (pathname.endsWith(".wasm")) return "application/wasm";
+  if (pathname.endsWith(".css")) return "text/css; charset=utf-8";
   if (pathname.endsWith(".js")) return "text/javascript; charset=utf-8";
   if (pathname.endsWith(".json")) return "application/json; charset=utf-8";
+  if (pathname.endsWith(".ttf")) return "font/ttf";
   return "application/octet-stream";
 }
 
@@ -11,7 +13,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const acceptsBrotli = request.headers.get("Accept-Encoding")?.split(",").some((value) => value.trim().startsWith("br"));
-    if (!acceptsBrotli || request.headers.has("Range") || !compressibleFrameworkAsset.test(url.pathname)) {
+    if (!acceptsBrotli || request.headers.has("Range") || !compressibleAsset.test(url.pathname)) {
       return env.ASSETS.fetch(request);
     }
 
