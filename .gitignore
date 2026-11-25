@@ -462,3 +462,12 @@ $RECYCLE.BIN/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# Local SDK and Cloudflare build output
+.dotnet/
+.dotnet-install.sh
+.cloudflare/
+dist/
+node_modules/
+playwright-report/
+test-results/

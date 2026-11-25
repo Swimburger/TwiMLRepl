@@ -8,7 +8,7 @@
   "packageManager": "pnpm@12.23.0",
   "scripts": {
     "build:editor": "node scripts/build-monaco.mjs",
-    "build": "dotnet publish TwiMLRepl.csproj --configuration Release --output dist --disable-build-servers -p:UseSharedCompilation=false && node scripts/write-reference-manifest.mjs",
+    "build": "./build.sh",
     "build:cloudflare": "pnpm run build && cf build",
     "build:cloudflare:prebuilt": "cf build",
     "deploy": "pnpm run build:cloudflare && cf deploy --prebuilt",
