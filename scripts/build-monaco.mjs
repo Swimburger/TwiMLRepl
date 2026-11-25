@@ -60,6 +60,7 @@ export const getOutput = integration.getOutput;
 export const setOutput = integration.setOutput;
 export const setMarkers = integration.setMarkers;
 export const setTheme = integration.setTheme;
+export const cancelAutoRun = integration.cancelAutoRun;
 export const disposeEditors = integration.disposeEditors;
 `;
 

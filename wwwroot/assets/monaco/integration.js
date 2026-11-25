@@ -1,4 +1,4 @@
-import * as integration from "./editor-integration-LFEOIPFP.js";
+import * as integration from "./editor-integration-ZCDIH3ZA.js";
 const stylesheetUrl = new URL("./editor-integration-IRDWKWOY.css", import.meta.url).href;
 const stylesheetReady = new Promise((resolve, reject) => {
   const existing = document.querySelector(`link[data-monaco-stylesheet="${stylesheetUrl}"]`);
@@ -16,4 +16,5 @@ export const getOutput = integration.getOutput;
 export const setOutput = integration.setOutput;
 export const setMarkers = integration.setMarkers;
 export const setTheme = integration.setTheme;
+export const cancelAutoRun = integration.cancelAutoRun;
 export const disposeEditors = integration.disposeEditors;

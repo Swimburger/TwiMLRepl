@@ -26,6 +26,7 @@ let outputModel: monaco.editor.ITextModel | undefined;
 let sourceChangeSubscription: monaco.IDisposable | undefined;
 let dotNetReference: DotNetReference | undefined;
 let suppressSourceChange = false;
+let autoRunTimer: ReturnType<typeof setTimeout> | undefined;
 let forcedColorsQuery: MediaQueryList | undefined;
 let colorSchemeQuery: MediaQueryList | undefined;
 
@@ -67,7 +68,13 @@ export function createEditors(
   outputEditor.getDomNode()?.querySelector('[role="textbox"]')?.setAttribute("aria-readonly", "true");
 
   sourceChangeSubscription = sourceModel.onDidChangeContent(() => {
-    if (!suppressSourceChange) void dotNetReference?.invokeMethodAsync("OnSourceChanged");
+    if (suppressSourceChange) return;
+    void dotNetReference?.invokeMethodAsync("OnSourceChanged");
+    cancelAutoRun();
+    autoRunTimer = setTimeout(() => {
+      autoRunTimer = undefined;
+      document.querySelector<HTMLButtonElement>("#run-button")?.click();
+    }, 600);
   });
 
   forcedColorsQuery = matchMedia("(forced-colors: active)");
@@ -107,7 +114,13 @@ export function setTheme(theme: "vs-dark" | "hc-black") {
   monaco.editor.setTheme(theme);
 }
 
+export function cancelAutoRun() {
+  if (autoRunTimer !== undefined) clearTimeout(autoRunTimer);
+  autoRunTimer = undefined;
+}
+
 export function disposeEditors() {
+  cancelAutoRun();
   sourceChangeSubscription?.dispose();
   sourceChangeSubscription = undefined;
   sourceEditor?.dispose();

@@ -14,6 +14,51 @@ async function setSource(page, source) {
   }, source);
 }
 
+const examples = {
+  Messaging: [
+    ["sms", "SMS reply"],
+    ["mms", "MMS reply"],
+    ["multiple-messages", "Multiple replies"],
+    ["message-redirect", "Reply, then redirect"],
+  ],
+  Voice: [
+    ["voice", "Say text"],
+    ["play-audio", "Play audio"],
+    ["phone-menu", "Keypad menu"],
+    ["speech-input", "Speech input"],
+    ["dial-number", "Dial a phone number"],
+    ["record-voicemail", "Record voicemail"],
+    ["conference", "Join a conference"],
+    ["enqueue", "Enqueue a caller"],
+    ["media-stream", "Stream call audio"],
+    ["reject-call", "Reject a call"],
+  ],
+};
+
+test("offers grouped, runnable Messaging and Voice examples", async ({ page }) => {
+  test.setTimeout(180_000);
+  await waitForEditors(page);
+  const picker = page.getByLabel("Example");
+  await expect(picker.locator("optgroup")).toHaveCount(2);
+  const pickerStyle = await picker.evaluate((select) => {
+    const style = getComputedStyle(select);
+    return { backgroundImage: style.backgroundImage, paddingInlineEnd: style.paddingInlineEnd };
+  });
+  expect(pickerStyle.backgroundImage).toContain("svg");
+  expect(pickerStyle.paddingInlineEnd).toBe("32px");
+
+  for (const [group, options] of Object.entries(examples)) {
+    const optionGroup = picker.locator(`optgroup[label="${group}"]`);
+    await expect(optionGroup).toBeAttached();
+    await expect(optionGroup.locator("option")).toHaveText(options.map(([, label]) => label));
+  }
+
+  for (const [value] of Object.values(examples).flat()) {
+    await picker.selectOption(value);
+    await expect(page.getByRole("status")).toContainText("Valid XML", { timeout: 60_000 });
+  }
+});
+
 test("runs C# in the isolated worker and exposes useful output actions", async ({ page }) => {
   const errors = [];
   const requests = [];
@@ -39,8 +84,7 @@ test("runs C# in the isolated worker and exposes useful output actions", async (
   expect(requests.some((url) => /BlazorMonaco|\/vs\/loader\.js|editor\.main\.js/.test(url))).toBe(false);
   expect(requests.some((url) => /Microsoft\.CodeAnalysis|Twilio\./.test(url))).toBe(false);
   await setSource(page, 'var response = new MessagingResponse();\nresponse.Message("Compiled by Playwright");\nreturn response;');
-  await expect(page.getByRole("status")).toContainText("stale");
-  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByRole("status")).toContainText("running automatically");
   await expect(page.getByRole("status")).toContainText("Valid XML", { timeout: 60_000 });
   await expect(page.locator("#xml-editor .view-lines")).toContainText("Compiled by Playwright");
   expect(requests.some((url) => /Microsoft\.CodeAnalysis|Twilio\./.test(url))).toBe(true);
@@ -73,17 +117,13 @@ test("clears stale output and reports compile and unwrapped runtime errors", asy
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByRole("status")).toContainText("Valid XML", { timeout: 60_000 });
   await setSource(page, "this is not C sharp;");
-  await expect(page.getByRole("status")).toContainText("stale");
-  await page.getByRole("button", { name: "Run" }).click();
   await expect(page.locator('.run-state[data-state="compile-error"]')).toBeVisible({ timeout: 60_000 });
   await expect(page.locator("#xml-editor .view-lines")).toBeEmpty();
   await setSource(page, 'throw new InvalidOperationException("Visible inner error");');
-  await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByRole("status")).toContainText("Visible inner error", { timeout: 60_000 });
   await expect(page.locator('.run-state[data-state="runtime-error"]')).toBeVisible();
   await expect(page.locator("#xml-editor .view-lines")).toBeEmpty();
   await setSource(page, 'var response = new MessagingResponse(); response.Message(new string(\'x\', 300000)); return response;');
-  await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByRole("status")).toContainText("256 KiB safety limit", { timeout: 60_000 });
   await expect(page.locator("#xml-editor .view-lines")).toBeEmpty();
 });
@@ -98,9 +138,6 @@ test("can terminate runaway code and recreate the worker", async ({ page }) => {
   await setSource(page, "while (true) { }");
   await page.getByRole("button", { name: "Run" }).click();
   await setSource(page, 'var response = new MessagingResponse(); response.Message("Recovered"); return response;');
-  await page.getByRole("button", { name: "Stop" }).click();
-  await expect(page.locator('.run-state[data-state="stale"]')).toContainText("discarded");
-  await page.getByRole("button", { name: "Run" }).click();
   await expect(page.locator("#xml-editor .view-lines")).toContainText("Recovered", { timeout: 60_000 });
   const timeoutResult = await page.evaluate(() => globalThis.twimlCompiler.run("while (true) { }", 100));
   expect(timeoutResult.status).toBe("timeout");
