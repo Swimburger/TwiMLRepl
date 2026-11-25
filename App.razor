@@ -8,13 +8,20 @@
             <div class="example-picker">
                 <label for="example">Example</label>
                 <select id="example" value="@selectedExample" @onchange="ChangeExample" disabled="@isRunning">
-                    <option value="sms">SMS reply</option>
-                    <option value="voice">Voice response</option>
+                    @foreach (var group in ExampleGroups)
+                    {
+                        <optgroup label="@group">
+                            @foreach (var example in Examples.Where(example => example.Group == group))
+                            {
+                                <option value="@example.Key">@example.Label</option>
+                            }
+                        </optgroup>
+                    }
                 </select>
             </div>
             <div class="toolbar" role="toolbar" aria-label="Editor actions" focusgroup="toolbar wrap">
                 <div class="toolbar-group" role="group" aria-label="Run controls">
-                    <button type="button" class="primary" @onclick="Run" disabled="@isRunning">Run</button>
+                    <button id="run-button" type="button" class="primary" @onclick="Run" disabled="@isRunning">Run</button>
                     <button type="button" @onclick="Stop" disabled="@(!isRunning)">Stop</button>
                     <button type="button" @onclick="Reset" disabled="@isRunning">Reset</button>
                 </div>
@@ -54,15 +61,122 @@
 
 @code {
     private const int TimeoutMilliseconds = 10_000;
-    private const string SmsCode = "var response = new MessagingResponse();\nresponse.Message(\"Hello from C#!\");\nreturn response;";
-    private const string VoiceCode = "var response = new VoiceResponse();\nresponse.Say(\"Hello from C sharp!\");\nreturn response;";
+    private static readonly string[] ExampleGroups = ["Messaging", "Voice"];
+    private static readonly Example[] Examples =
+    [
+        new("sms", "SMS reply", "Messaging", """
+            var response = new MessagingResponse();
+            response.Message("Thanks for your message!");
+            return response;
+            """),
+        new("mms", "MMS reply", "Messaging", """
+            var response = new MessagingResponse();
+            var message = new Twilio.TwiML.Messaging.Message();
+            message.Body("Here is the owl you requested.");
+            message.Media(new Uri("https://demo.twilio.com/owl.png"));
+            response.Append(message);
+            return response;
+            """),
+        new("multiple-messages", "Multiple replies", "Messaging", """
+            var response = new MessagingResponse();
+            response.Message("This is message 1 of 2.");
+            response.Message("This is message 2 of 2.");
+            return response;
+            """),
+        new("message-redirect", "Reply, then redirect", "Messaging", """
+            var response = new MessagingResponse();
+            response.Message("One moment while we route your message.");
+            response.Redirect(new Uri("https://example.com/twiml/next-message"));
+            return response;
+            """),
+        new("voice", "Say text", "Voice", """
+            var response = new VoiceResponse();
+            response.Say("Hello from C sharp!");
+            return response;
+            """),
+        new("play-audio", "Play audio", "Voice", """
+            var response = new VoiceResponse();
+            response.Play(new Uri("https://demo.twilio.com/docs/classic.mp3"));
+            return response;
+            """),
+        new("phone-menu", "Keypad menu", "Voice", """
+            var response = new VoiceResponse();
+            var gather = new Twilio.TwiML.Voice.Gather(
+                action: new Uri("https://example.com/twiml/menu"),
+                numDigits: 1);
+            gather.Say("Press 1 for sales. Press 2 for support.");
+            response.Append(gather);
+            response.Say("We did not receive a selection. Goodbye.");
+            return response;
+            """),
+        new("speech-input", "Speech input", "Voice", """
+            var response = new VoiceResponse();
+            var gather = new Twilio.TwiML.Voice.Gather(
+                input: new[] { Twilio.TwiML.Voice.Gather.InputEnum.Speech },
+                action: new Uri("https://example.com/twiml/speech"),
+                speechTimeout: "auto",
+                hints: "sales, support, billing");
+            gather.Say("How can we help you today?");
+            response.Append(gather);
+            return response;
+            """),
+        new("dial-number", "Dial a phone number", "Voice", """
+            var response = new VoiceResponse();
+            response.Dial(
+                "+15551234567",
+                callerId: "+15557654321",
+                timeout: 20,
+                answerOnBridge: true);
+            return response;
+            """),
+        new("record-voicemail", "Record voicemail", "Voice", """
+            var response = new VoiceResponse();
+            response.Say("Please leave a message after the beep. Press pound when finished.");
+            response.Record(
+                action: new Uri("https://example.com/twiml/recording-complete"),
+                maxLength: 120,
+                finishOnKey: "#",
+                playBeep: true);
+            return response;
+            """),
+        new("conference", "Join a conference", "Voice", """
+            var response = new VoiceResponse();
+            var dial = new Twilio.TwiML.Voice.Dial();
+            dial.Conference(
+                "support-room",
+                startConferenceOnEnter: true,
+                endConferenceOnExit: false);
+            response.Append(dial);
+            return response;
+            """),
+        new("enqueue", "Enqueue a caller", "Voice", """
+            var response = new VoiceResponse();
+            response.Say("Please hold for the next available agent.");
+            response.Enqueue(
+                "support",
+                waitUrl: new Uri("https://example.com/twiml/hold-music"));
+            return response;
+            """),
+        new("media-stream", "Stream call audio", "Voice", """
+            var response = new VoiceResponse();
+            var connect = new Twilio.TwiML.Voice.Connect();
+            connect.Stream(url: "wss://example.com/media-stream");
+            response.Append(connect);
+            return response;
+            """),
+        new("reject-call", "Reject a call", "Voice", """
+            var response = new VoiceResponse();
+            response.Reject(Twilio.TwiML.Voice.Reject.ReasonEnum.Busy);
+            return response;
+            """)
+    ];
     private ElementReference csharpEditorElement;
     private ElementReference xmlEditorElement;
     private IJSObjectReference? editorModule;
     private DotNetObjectReference<App>? selfReference;
-    private string selectedExample = "sms";
+    private string selectedExample = Examples[0].Key;
     private string status = "ready";
-    private string statusMessage = "Ready. Choose an example or edit the C# code, then select Run.";
+    private string statusMessage = "Ready. Choose an example or edit the C# code; TwiML is generated automatically.";
     private bool isRunning;
     private bool xmlValid;
     private bool outputStale;
@@ -76,7 +190,7 @@
             {
                 editorModule = await JS.InvokeAsync<IJSObjectReference>("import", "./assets/monaco/integration.js");
                 selfReference = DotNetObjectReference.Create(this);
-                await editorModule.InvokeVoidAsync("createEditors", csharpEditorElement, xmlEditorElement, SmsCode, selfReference);
+                await editorModule.InvokeVoidAsync("createEditors", csharpEditorElement, xmlEditorElement, Examples[0].Code, selfReference);
                 await JS.InvokeVoidAsync("twimlUi.initToolbar");
             }
             catch (JSException exception)
@@ -89,23 +203,25 @@
     }
 
     [JSInvokable]
-    public Task OnSourceChanged()
+    public async Task OnSourceChanged()
     {
         if (isRunning)
         {
             sourceChangedDuringRun = true;
-            return Task.CompletedTask;
+            try { await JS.InvokeVoidAsync("twimlCompiler.stop"); }
+            catch (JSException) { }
         }
         outputStale = xmlValid || !string.IsNullOrEmpty(statusMessage);
         xmlValid = false;
         status = "stale";
-        statusMessage = "Source changed. The output is stale; select Run to refresh it.";
-        return InvokeAsync(StateHasChanged);
+        statusMessage = "Source changed. Waiting briefly before running automatically…";
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task Run()
     {
         if (editorModule is null || isRunning) return;
+        if (!await TryInvokeEditorVoidAsync("cancelAutoRun")) return;
         isRunning = true;
         sourceChangedDuringRun = false;
         xmlValid = false;
@@ -133,7 +249,7 @@
             outputStale = true;
             xmlValid = false;
             status = "stale";
-            statusMessage = "Source changed while the code was running. The result was discarded; select Run again.";
+            statusMessage = "Source changed while the code was running. The result was discarded; running the updated source automatically…";
             return;
         }
         status = result.Status;
@@ -156,18 +272,22 @@
 
     private async Task ChangeExample(ChangeEventArgs args)
     {
-        selectedExample = args.Value?.ToString() == "voice" ? "voice" : "sms";
-        await SetSource(selectedExample == "voice" ? VoiceCode : SmsCode);
+        var example = FindExample(args.Value?.ToString());
+        selectedExample = example.Key;
+        await SetSource(example.Code);
+        await Run();
     }
 
     private async Task Reset()
     {
-        await SetSource(selectedExample == "voice" ? VoiceCode : SmsCode);
+        if (editorModule is not null && !await TryInvokeEditorVoidAsync("cancelAutoRun")) return;
+        await SetSource(FindExample(selectedExample).Code);
         if (editorModule is not null) await TryInvokeEditorVoidAsync("setOutput", string.Empty);
         xmlValid = false;
         outputStale = false;
         status = "ready";
-        statusMessage = "Reset complete. Select Run to generate TwiML.";
+        statusMessage = "Reset complete. Running automatically…";
+        await Run();
     }
 
     private async Task SetSource(string value)
@@ -177,7 +297,7 @@
         outputStale = true;
         xmlValid = false;
         status = "stale";
-        statusMessage = "Example loaded. Select Run to generate current output.";
+        statusMessage = "Example loaded. Running automatically…";
     }
 
     private async Task FormatXml()
@@ -257,6 +377,9 @@
         }
     }
 
+    private static Example FindExample(string? key) =>
+        Examples.FirstOrDefault(example => example.Key == key) ?? Examples[0];
+
     public async ValueTask DisposeAsync()
     {
         try { await JS.InvokeVoidAsync("twimlCompiler.dispose"); }
@@ -280,4 +403,6 @@
         public string Message { get; set; } = "The compiler did not return a result.";
         public bool XmlValid { get; set; }
     }
+
+    private sealed record Example(string Key, string Label, string Group, string Code);
 }
